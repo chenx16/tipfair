@@ -32,11 +32,22 @@ export function splitTips(input: SplitInput): Share[] {
   const { totalCents, entries } = input;
   const weights = entries.map(weightOf);
   const totalWeight = sum(weights);
+  const exact = weights.map((weight) => (totalCents * weight) / totalWeight);
+  const cents = exact.map(Math.floor);
 
-  return entries.map((entry, i) => ({
-    staffId: entry.staffId,
-    cents: baseShare(totalCents, weights[i], totalWeight),
-  }));
+  const leftover = totalCents - sum(cents);
+  const order = entries
+    .map((entry, i) => ({ i, staffId: entry.staffId, remainder: exact[i] - cents[i] }))
+    .sort((a, b) => b.remainder - a.remainder || compareIds(a.staffId, b.staffId));
+  for (let k = 0; k < leftover; k++) {
+    cents[order[k].i] += 1;
+  }
+
+  return entries.map((entry, i) => ({ staffId: entry.staffId, cents: cents[i] }));
+}
+
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /** Weight of an entry = hours × points. */
@@ -46,9 +57,4 @@ function weightOf(entry: SplitEntry): number {
 
 function sum(values: number[]): number {
   return values.reduce((acc, value) => acc + value, 0);
-}
-
-/** Base share in cents = floor(total × weight / totalWeight). */
-function baseShare(totalCents: number, weight: number, totalWeight: number): number {
-  return Math.floor((totalCents * weight) / totalWeight);
 }

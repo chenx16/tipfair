@@ -30,6 +30,24 @@ export interface Share {
 /** Splits a tip pool across entries. Returns one share per entry, in input order. */
 export function splitTips(input: SplitInput): Share[] {
   const { totalCents, entries } = input;
+  if (totalCents < 0) {
+    throw new Error(`Total must not be negative (got ${totalCents} cents)`);
+  }
+  for (const entry of entries) {
+    if (entry.role === "MANAGER" || entry.role === "OWNER") {
+      throw new Error(`${entry.role} ${entry.staffId} cannot receive a share of the tip pool`);
+    }
+    if (entry.hours < 0) {
+      throw new Error(`Hours must not be negative for ${entry.staffId}`);
+    }
+    if (entry.points < 0) {
+      throw new Error(`Points must not be negative for ${entry.staffId}`);
+    }
+  }
+  if (totalCents > 0 && sum(entries.map(weightOf)) === 0) {
+    throw new Error("Cannot split a positive total when every weight is zero");
+  }
+
   if (totalCents === 0) {
     return entries.map((entry) => ({ staffId: entry.staffId, cents: 0 }));
   }

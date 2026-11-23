@@ -211,4 +211,60 @@ describe("splitTips", () => {
       ]);
     });
   });
+
+  describe("AC7: throws for invalid input", () => {
+    it("throws for a negative total", () => {
+      expect(() =>
+        splitTips({ totalCents: -100, entries: [staff("a", 1)] }),
+      ).toThrow(/total/i);
+    });
+
+    it("throws for negative hours", () => {
+      expect(() =>
+        splitTips({ totalCents: 10000, entries: [staff("a", 4), staff("b", -1)] }),
+      ).toThrow(/hours/i);
+    });
+
+    it("throws for negative points", () => {
+      expect(() =>
+        splitTips({ totalCents: 10000, entries: [staff("a", 4), staff("b", 4, -0.5)] }),
+      ).toThrow(/points/i);
+    });
+
+    it("throws when all weights are zero and the total is positive", () => {
+      expect(() =>
+        splitTips({ totalCents: 10000, entries: [staff("a", 0), staff("b", 0)] }),
+      ).toThrow(/weight/i);
+    });
+
+    it("throws when there are no entries and the total is positive", () => {
+      expect(() => splitTips({ totalCents: 10000, entries: [] })).toThrow(/weight/i);
+    });
+
+    it("still validates entries when the total is 0", () => {
+      expect(() =>
+        splitTips({ totalCents: 0, entries: [staff("a", -1)] }),
+      ).toThrow(/hours/i);
+    });
+  });
+
+  describe("AC7: managers and owners never receive a share", () => {
+    it.each(["MANAGER", "OWNER"] as const)("throws for an entry with role %s", (role) => {
+      expect(() =>
+        splitTips({
+          totalCents: 10000,
+          entries: [staff("a", 4), { staffId: "boss", role, hours: 4, points: 1 }],
+        }),
+      ).toThrow(new RegExp(`${role}.*boss|boss.*${role}`));
+    });
+
+    it("throws for a MANAGER entry even with 0 hours and a 0 total", () => {
+      expect(() =>
+        splitTips({
+          totalCents: 0,
+          entries: [{ staffId: "boss", role: "MANAGER", hours: 0, points: 1 }],
+        }),
+      ).toThrow(/MANAGER/);
+    });
+  });
 });

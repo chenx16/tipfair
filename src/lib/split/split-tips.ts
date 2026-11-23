@@ -29,11 +29,26 @@ export interface Share {
 
 /** Splits a tip pool across entries. Returns one share per entry, in input order. */
 export function splitTips(input: SplitInput): Share[] {
-  const weights = input.entries.map((entry) => entry.hours * entry.points);
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const { totalCents, entries } = input;
+  const weights = entries.map(weightOf);
+  const totalWeight = sum(weights);
 
-  return input.entries.map((entry, i) => ({
+  return entries.map((entry, i) => ({
     staffId: entry.staffId,
-    cents: Math.floor((input.totalCents * weights[i]) / totalWeight),
+    cents: baseShare(totalCents, weights[i], totalWeight),
   }));
+}
+
+/** Weight of an entry = hours × points. */
+function weightOf(entry: SplitEntry): number {
+  return entry.hours * entry.points;
+}
+
+function sum(values: number[]): number {
+  return values.reduce((acc, value) => acc + value, 0);
+}
+
+/** Base share in cents = floor(total × weight / totalWeight). */
+function baseShare(totalCents: number, weight: number, totalWeight: number): number {
+  return Math.floor((totalCents * weight) / totalWeight);
 }

@@ -152,4 +152,63 @@ describe("splitTips", () => {
       ]);
     });
   });
+
+  describe("AC5: a total of 0 gives every share 0", () => {
+    it("gives 0 to every entry with hours", () => {
+      const shares = splitTips({
+        totalCents: 0,
+        entries: [staff("a", 6), staff("b", 4, 0.5)],
+      });
+
+      expect(shares).toEqual([
+        { staffId: "a", cents: 0 },
+        { staffId: "b", cents: 0 },
+      ]);
+    });
+
+    it("gives 0 to every entry when everyone also has 0 hours", () => {
+      const shares = splitTips({
+        totalCents: 0,
+        entries: [staff("a", 0), staff("b", 0)],
+      });
+
+      expect(shares).toEqual([
+        { staffId: "a", cents: 0 },
+        { staffId: "b", cents: 0 },
+      ]);
+    });
+
+    it("returns no shares for no entries", () => {
+      expect(splitTips({ totalCents: 0, entries: [] })).toEqual([]);
+    });
+  });
+
+  describe("AC6: zero-hour entries get 0", () => {
+    it("gives 0 to a zero-hour entry and splits the total among the rest", () => {
+      const shares = splitTips({
+        totalCents: 10000,
+        entries: [staff("a", 6), staff("b", 0), staff("c", 4)],
+      });
+
+      expect(shares).toEqual([
+        { staffId: "a", cents: 6000 },
+        { staffId: "b", cents: 0 },
+        { staffId: "c", cents: 4000 },
+      ]);
+    });
+
+    it("never gives a leftover cent to a zero-hour entry, even with the lowest staffId", () => {
+      const shares = splitTips({
+        totalCents: 100,
+        entries: [staff("a", 0), staff("b", 1), staff("c", 1), staff("d", 1)],
+      });
+
+      expect(shares).toEqual([
+        { staffId: "a", cents: 0 },
+        { staffId: "b", cents: 34 },
+        { staffId: "c", cents: 33 },
+        { staffId: "d", cents: 33 },
+      ]);
+    });
+  });
 });

@@ -30,29 +30,50 @@ export interface Share {
 /** Splits a tip pool across entries. Returns one share per entry, in input order. */
 export function splitTips(input: SplitInput): Share[] {
   const { totalCents, entries } = input;
-  const weights = entries.map(weightOf);
-  const totalWeight = sum(weights);
-  const exact = weights.map((weight) => (totalCents * weight) / totalWeight);
-  const cents = exact.map(Math.floor);
-
-  const leftover = totalCents - sum(cents);
-  const order = entries
-    .map((entry, i) => ({ i, staffId: entry.staffId, remainder: exact[i] - cents[i] }))
-    .sort((a, b) => b.remainder - a.remainder || compareIds(a.staffId, b.staffId));
-  for (let k = 0; k < leftover; k++) {
-    cents[order[k].i] += 1;
-  }
+  const exact = exactShares(totalCents, entries);
+  const base = exact.map((share) => Math.floor(share));
+  const cents = distributeLeftover(totalCents, entries, exact, base);
 
   return entries.map((entry, i) => ({ staffId: entry.staffId, cents: cents[i] }));
 }
 
-function compareIds(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+/** Unrounded share of each entry = total × weight / totalWeight. */
+function exactShares(totalCents: number, entries: SplitEntry[]): number[] {
+  const weights = entries.map(weightOf);
+  const totalWeight = sum(weights);
+  return weights.map((weight) => (totalCents * weight) / totalWeight);
 }
 
 /** Weight of an entry = hours × points. */
 function weightOf(entry: SplitEntry): number {
   return entry.hours * entry.points;
+}
+
+/**
+ * Hands out the cents lost to rounding down, one at a time, in leftover order.
+ * Returns new share amounts; does not mutate `base`.
+ */
+function distributeLeftover(
+  totalCents: number,
+  entries: SplitEntry[],
+  exact: number[],
+  base: number[],
+): number[] {
+  const leftover = totalCents - sum(base);
+  const recipients = new Set(leftoverOrder(entries, exact, base).slice(0, leftover));
+  return base.map((cents, i) => (recipients.has(i) ? cents + 1 : cents));
+}
+
+/** Entry indices ranked by largest fractional remainder, ties by staffId ascending. */
+function leftoverOrder(entries: SplitEntry[], exact: number[], base: number[]): number[] {
+  return entries
+    .map((entry, i) => ({ index: i, staffId: entry.staffId, remainder: exact[i] - base[i] }))
+    .sort((a, b) => b.remainder - a.remainder || compareIds(a.staffId, b.staffId))
+    .map(({ index }) => index);
+}
+
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function sum(values: number[]): number {

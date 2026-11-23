@@ -30,6 +30,10 @@ export interface Share {
 /** Splits a tip pool across entries. Returns one share per entry, in input order. */
 export function splitTips(input: SplitInput): Share[] {
   const { totalCents, entries } = input;
+  if (totalCents === 0) {
+    return entries.map((entry) => ({ staffId: entry.staffId, cents: 0 }));
+  }
+
   const exact = exactShares(totalCents, entries);
   const base = exact.map((share) => Math.floor(share));
   const cents = distributeLeftover(totalCents, entries, exact, base);
